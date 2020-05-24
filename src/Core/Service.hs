@@ -6,19 +6,21 @@ import Core.Types           (Employee, id, login, salary)
 import Data.ByteString.Lazy (readFile)
 import Data.Csv             (HasHeader (HasHeader), decode)
 import Data.Set             (fromList, size)
-import Data.Text            (Text, pack)
-import Data.Vector          (Vector, length, map, toList)
-import Database.Postgres    (tryUpdateDatabase)
-import Prelude              hiding (id, length, map, readFile)
+import Data.Text            (Text, head, pack)
+import Data.Vector          (Vector, filter, length, map, toList)
+import Database.Postgres    (importEmployeesToDB)
+import Prelude              hiding (filter, head, id, length, map, readFile)
 
-importUsers :: FilePath -> IO (Either Text Int)
+importUsers :: FilePath -> IO (Either Text ())
 importUsers filePath = do
     contents <- readFile filePath
     case decode HasHeader contents of
         Left e -> return $ Left $ pack e -- csv parsing error
-        Right employees -> case validateCSVEmployees employees of
-            Left e'          -> return $ Left e' -- logic error within csv file
-            Right employees' -> tryUpdateDatabase employees'
+        Right employees -> do
+            let filteredEmployees = filter (\employee -> head (id employee) /= '#') employees -- filter out #
+            case validateCSVEmployees filteredEmployees of
+                Left e'          -> return $ Left e' -- logic error within csv file
+                Right employees' -> importEmployeesToDB employees'
 
 validateCSVEmployees :: Vector Employee -> Either Text (Vector Employee)
 validateCSVEmployees employees
