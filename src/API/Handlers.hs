@@ -3,13 +3,16 @@
 module API.Handlers where
 
 import API.Endpoints          (GenericResponse (GenericResponseSuccess),
-                               GetUsersResponse)
+                               GetUsersResponse (GetUsersResponse))
 import Control.Monad.IO.Class (liftIO)
-import Core.Service           (importUsers)
+import Core.Service           (getUsers, importUsers)
 import Core.Types             (Employee, EmployeeId)
 import Data.ByteString.Lazy   (fromStrict)
-import Data.Text              (Text)
+import Data.Scientific        (fromFloatDigits)
+import Data.Text              (Text, head, null, tail)
 import Data.Text.Encoding     (encodeUtf8)
+import Database.Postgres      (EmployeesTableField (Id, Login, Name, Salary))
+import Prelude                hiding (head, null, tail)
 import Servant                (Handler, NoContent, throwError)
 import Servant.Server         (err400, err501, errBody)
 
@@ -20,8 +23,28 @@ uploadUsersHandler filePath = do
         Left e  -> throwError err400 { errBody = fromStrict . encodeUtf8 $ e }
         Right x -> return GenericResponseSuccess
 
-getUsersHandler :: Maybe Double -> Maybe Double -> Maybe Int -> Maybe Int -> Maybe Text -> Handler GetUsersResponse
-getUsersHandler minSalary maxSalary offset limit sort = throwError err501 { errBody = "undefined" }
+getUsersHandler :: Double -> Double -> Int -> Int -> Text -> Handler GetUsersResponse
+getUsersHandler minSalary maxSalary offset limit sort
+    | minSalary > maxSalary = throwError err400 { errBody = "minSalary cannot exceed maxSalary"}
+    | minSalary < 0 = throwError err400 { errBody = "minSalary cannot be negative" }
+    | offset < 0 = throwError err400 { errBody = "offset cannot be negative" }
+    | limit > 1000 = throwError err400 { errBody = "maximum for limit field is 1000" }
+    | null sort || head sort `notElem` ['+', '-', ' '] = throwError err400 { errBody = "sort prefix must be + or - only" }
+    | null sort || tail sort `notElem` ["id", "login", "name", "salary"] = throwError err400 { errBody = "sort field must be id, login, name, or salary only (uncapitalized)" }
+    | otherwise = do
+        let sortField = case tail sort of
+                "id"     -> Id
+                "login"  -> Login
+                "name"   -> Name
+                "salary" -> Salary
+                _        -> Id
+            sortAsc = head sort /= '-'
+            minSalary' = fromFloatDigits minSalary
+            maxSalary' = fromFloatDigits maxSalary
+        results <- liftIO $ getUsers minSalary' maxSalary' offset limit sortField sortAsc
+        case results of
+            Left e -> throwError err400 { errBody = fromStrict . encodeUtf8 $ e }
+            Right users -> return $ GetUsersResponse users
 
 getUserHandler :: EmployeeId -> Handler Employee
 getUserHandler = undefined
@@ -33,4 +56,4 @@ updateUserHandler :: EmployeeId -> Employee -> Handler GenericResponse
 updateUserHandler = undefined
 
 deleteUserHandler :: EmployeeId -> Handler NoContent
-deleteUserHandler = undefined
+deleteUserHandler = return $ throwError err501 { errBody = "undefined" }

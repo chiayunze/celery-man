@@ -13,7 +13,7 @@ import Data.Functor      ((<&>))
 import Data.Text         (Text)
 import GHC.Generics      (Generic)
 import Servant           ((:<|>), (:>), Capture, DeleteNoContent, Get, JSON,
-                          Patch, Post, QueryParam, ReqBody)
+                          Patch, Post, QueryParam', ReqBody, Required)
 import Servant.Multipart (FileData (fdFileCType, fdPayload), FromMultipart,
                           MultipartForm, Tmp, fromMultipart, lookupFile)
 
@@ -25,11 +25,11 @@ type API =
         :> Post '[JSON] GenericResponse
     -- GET /users
     :<|> "users"
-        :> QueryParam "minSalary" Double
-        :> QueryParam "maxSalary" Double
-        :> QueryParam "offset" Int
-        :> QueryParam "limit" Int
-        :> QueryParam "sort" Text
+        :> QueryParam' '[Required] "minSalary" Double
+        :> QueryParam' '[Required] "maxSalary" Double
+        :> QueryParam' '[Required] "offset" Int
+        :> QueryParam' '[Required] "limit" Int
+        :> QueryParam' '[Required] "sort" Text
         :> Get '[JSON] GetUsersResponse
     -- GET /users/{id}
     :<|> "users"
