@@ -17,7 +17,7 @@ data Employee = Employee {
   , login  :: EmployeeLogin
   , name   :: EmployeeName
   , salary :: EmployeeSalary
-} deriving (Generic, FromRow, ToRow, Show)
+} deriving (Generic, FromRow, ToRow)
 
 type EmployeeId = Text
 type EmployeeLogin = Text
@@ -31,3 +31,5 @@ instance FromRecord Employee where
     parseRecord v
         | length v == 4 = Employee <$> v .! 0 <*> v .! 1 <*> v .! 2 <*> v .! 3
         | otherwise     = fail "preceeding row does not have 4 columns"
+
+data EmployeesTableField = Id | Name | Login | Salary deriving (Show, Read)

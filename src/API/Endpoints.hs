@@ -7,13 +7,13 @@
 
 module API.Endpoints where
 
-import Core.Types        (Employee, EmployeeId)
+import Core.Types        (Employee)
 import Data.Aeson        (ToJSON, object, toJSON, (.=))
 import Data.Functor      ((<&>))
 import Data.Text         (Text)
 import GHC.Generics      (Generic)
-import Servant           ((:<|>), (:>), Capture, DeleteNoContent, Get, JSON,
-                          Patch, Post, QueryParam', ReqBody, Required)
+import Servant           ((:<|>), (:>), Get, JSON, Post, QueryParam', Raw,
+                          Required)
 import Servant.Multipart (FileData (fdFileCType, fdPayload), FromMultipart,
                           MultipartForm, Tmp, fromMultipart, lookupFile)
 
@@ -31,24 +31,26 @@ type API =
         :> QueryParam' '[Required] "limit" Int
         :> QueryParam' '[Required] "sort" Text
         :> Get '[JSON] GetUsersResponse
-    -- GET /users/{id}
-    :<|> "users"
-        :> Capture "id" EmployeeId
-        :> Get '[JSON] Employee
-    -- POST /users/{id}
-    :<|> "users"
-        :> Capture "id" EmployeeId
-        :> ReqBody '[JSON] Employee
-        :> Post '[JSON] GenericResponse
-    -- PATCH /users/{id}
-    :<|> "users"
-        :> Capture "id" EmployeeId
-        :> ReqBody '[JSON] Employee
-        :> Patch '[JSON] GenericResponse
-    -- DELETE /users/{id}
-    :<|> "users"
-        :> Capture "id" EmployeeId
-        :> DeleteNoContent
+    -- -- GET /users/{id}
+    -- :<|> "users"
+    --     :> Capture "id" EmployeeId
+    --     :> Get '[JSON] Employee
+    -- -- POST /users/{id}
+    -- :<|> "users"
+    --     :> Capture "id" EmployeeId
+    --     :> ReqBody '[JSON] Employee
+    --     :> Post '[JSON] GenericResponse
+    -- -- PATCH /users/{id}
+    -- :<|> "users"
+    --     :> Capture "id" EmployeeId
+    --     :> ReqBody '[JSON] Employee
+    --     :> Patch '[JSON] GenericResponse
+    -- -- DELETE /users/{id}
+    -- :<|> "users"
+    --     :> Capture "id" EmployeeId
+    --     :> DeleteNoContent
+    -- concur-replica UI
+    :<|> Raw
 
 instance FromMultipart Tmp FilePath where
     fromMultipart multipartData = lookupFile "file" multipartData >>= checkEncoding <&> fdPayload

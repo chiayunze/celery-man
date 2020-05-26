@@ -6,22 +6,21 @@ import API.Endpoints          (GenericResponse (GenericResponseSuccess),
                                GetUsersResponse (GetUsersResponse))
 import Control.Monad.IO.Class (liftIO)
 import Core.Service           (getUsers, importUsers)
-import Core.Types             (Employee, EmployeeId)
+import Core.Types             (EmployeesTableField (Id, Login, Name, Salary))
 import Data.ByteString.Lazy   (fromStrict)
 import Data.Scientific        (fromFloatDigits)
 import Data.Text              (Text, head, null, tail)
 import Data.Text.Encoding     (encodeUtf8)
-import Database.Postgres      (EmployeesTableField (Id, Login, Name, Salary))
 import Prelude                hiding (head, null, tail)
-import Servant                (Handler, NoContent, throwError)
-import Servant.Server         (err400, err501, errBody)
+import Servant                (Handler, throwError)
+import Servant.Server         (err400, errBody)
 
 uploadUsersHandler :: FilePath -> Handler GenericResponse
 uploadUsersHandler filePath = do
     results <- liftIO $ importUsers filePath
     case results of
         Left e  -> throwError err400 { errBody = fromStrict . encodeUtf8 $ e }
-        Right x -> return GenericResponseSuccess
+        Right _ -> return GenericResponseSuccess
 
 getUsersHandler :: Double -> Double -> Int -> Int -> Text -> Handler GetUsersResponse
 getUsersHandler minSalary maxSalary offset limit sort
@@ -44,16 +43,16 @@ getUsersHandler minSalary maxSalary offset limit sort
         results <- liftIO $ getUsers minSalary' maxSalary' offset limit sortField sortAsc
         case results of
             Left e -> throwError err400 { errBody = fromStrict . encodeUtf8 $ e }
-            Right users -> return $ GetUsersResponse users
+            Right (users, _) -> return $ GetUsersResponse users
 
-getUserHandler :: EmployeeId -> Handler Employee
-getUserHandler = undefined
+-- getUserHandler :: EmployeeId -> Handler Employee
+-- getUserHandler = undefined
 
-createUserHandler :: EmployeeId -> Employee -> Handler GenericResponse
-createUserHandler = undefined
+-- createUserHandler :: EmployeeId -> Employee -> Handler GenericResponse
+-- createUserHandler = undefined
 
-updateUserHandler :: EmployeeId -> Employee -> Handler GenericResponse
-updateUserHandler = undefined
+-- updateUserHandler :: EmployeeId -> Employee -> Handler GenericResponse
+-- updateUserHandler = undefined
 
-deleteUserHandler :: EmployeeId -> Handler NoContent
-deleteUserHandler = return $ throwError err501 { errBody = "undefined" }
+-- deleteUserHandler :: EmployeeId -> Handler NoContent
+-- deleteUserHandler = return $ throwError err501 { errBody = "undefined" }

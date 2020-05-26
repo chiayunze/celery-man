@@ -2,14 +2,14 @@
 
 module Core.Service where
 
-import Core.Types           (Employee, EmployeeSalary, id, login, salary)
+import Core.Types           (Employee, EmployeeSalary, EmployeesTableField, id,
+                             login, salary)
 import Data.ByteString.Lazy (readFile)
 import Data.Csv             (HasHeader (HasHeader), decode)
 import Data.Set             (fromList, size)
 import Data.Text            (Text, head, pack)
 import Data.Vector          (Vector, filter, length, map, toList)
-import Database.Postgres    (EmployeesTableField, getUsersFromDB,
-                             importEmployeesToDB)
+import Database.Postgres    (getUsersFromDB, importEmployeesToDB)
 import Prelude              hiding (filter, head, id, length, map, readFile)
 
 importUsers :: FilePath -> IO (Either Text ())
@@ -23,7 +23,6 @@ importUsers filePath = do
                 Left e'          -> return $ Left e' -- logic error within csv file
                 Right employees' -> importEmployeesToDB employees'
 
--- TODO: disallow empty strings
 validateCSVEmployees :: Vector Employee -> Either Text (Vector Employee)
 validateCSVEmployees employees
     | salariesNonNegative = Left "csv error: negative salaries are disallowed"
@@ -35,5 +34,5 @@ validateCSVEmployees employees
           idsNotUnique = employeeCount /= (size . fromList . toList $ map id employees)
           loginsNotUnique = employeeCount /= (size . fromList . toList $ map login employees)
 
-getUsers :: EmployeeSalary -> EmployeeSalary -> Int -> Int -> EmployeesTableField -> Bool -> IO (Either Text [Employee])
+getUsers :: EmployeeSalary -> EmployeeSalary -> Int -> Int -> EmployeesTableField -> Bool -> IO (Either Text ([Employee], Int))
 getUsers = getUsersFromDB

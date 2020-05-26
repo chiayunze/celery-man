@@ -3,7 +3,10 @@
 module Database.Postgres where
 
 import           Control.Exception.Safe           (try)
-import           Core.Types                       (Employee, EmployeeSalary)
+import           Core.Types                       (Employee (Employee),
+                                                   EmployeeId, EmployeeLogin,
+                                                   EmployeeName, EmployeeSalary,
+                                                   EmployeesTableField (Id, Login, Name, Salary))
 import qualified Data.ByteString                  as BS (append)
 import           Data.ByteString.Char8            (pack)
 import           Data.Text                        (Text, append)
@@ -23,8 +26,6 @@ getConnString = do
     host <- getEnv "PG_HOST"
     port <- getEnv "PG_PORT"
     return $ "postgres://" ++ user ++ ":" ++ password ++ "@" ++ host ++ ":" ++ port
-
-data EmployeesTableField = Id | Name | Login | Salary
 
 importEmployeesToDB :: Vector Employee -> IO (Either Text ())
 importEmployeesToDB employees = do
@@ -51,7 +52,7 @@ importEmployeesToDB employees = do
         Left e  -> return $ Left $ "DB error: " `append` decodeUtf8 (sqlErrorMsg e) `append` "\n" `append` decodeUtf8 (sqlErrorDetail e)
         Right _ -> return $ Right ()
 
-getUsersFromDB :: EmployeeSalary -> EmployeeSalary -> Int -> Int -> EmployeesTableField -> Bool -> IO (Either Text [Employee])
+getUsersFromDB :: EmployeeSalary -> EmployeeSalary -> Int -> Int -> EmployeesTableField -> Bool -> IO (Either Text ([Employee], Int))
 getUsersFromDB minSalary maxSalary offset limit sortField sortAsc = do
 
     connString <- fmap pack getConnString
@@ -65,12 +66,17 @@ getUsersFromDB minSalary maxSalary offset limit sortField sortAsc = do
         queryTemplate = Query $ "WITH t AS \
             \(SELECT *, ROW_NUMBER() OVER \
             \(ORDER BY " `BS.append` sortField' `BS.append` " " `BS.append` sortAsc' `BS.append` ") as rownum \
-            \FROM celery_man.employees WHERE salary >= ? AND salary <= ?) \
-            \SELECT id, login, name, salary FROM t WHERE rownum > ? AND rownum <= ? + ?"
+            \FROM celery_man.employees WHERE salary >= ? AND salary <= ?), \
+            \t2 AS (SELECT COUNT(*) AS records FROM t) \
+            \SELECT id, login, name, salary, (SELECT records from t2) \
+            \FROM t WHERE rownum > ? AND rownum <= ? + ?"
         substituteVars = (minSalary, maxSalary, offset, offset, limit)
 
     result <- try $ query conn queryTemplate substituteVars
 
-    case result :: Either SqlError [Employee] of
+    case result :: Either SqlError [(EmployeeId, EmployeeLogin, EmployeeName, EmployeeSalary, Int)] of
         Left e -> return $ Left $ "DB error: " `append` decodeUtf8 (sqlErrorMsg e) `append` "\n" `append` decodeUtf8 (sqlErrorDetail e)
-        Right r -> return $ Right r
+        Right rows -> return $ Right (
+            map (\(id', login, name, salary, _) -> Employee id' login name salary) rows
+          , if null rows then 0 else (\(_, _, _, _, records) -> records) $ head rows
+          )
