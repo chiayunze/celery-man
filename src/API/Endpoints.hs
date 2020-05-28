@@ -31,24 +31,6 @@ type API =
         :> QueryParam' '[Required] "limit" Int
         :> QueryParam' '[Required] "sort" Text
         :> Get '[JSON] GetUsersResponse
-    -- -- GET /users/{id}
-    -- :<|> "users"
-    --     :> Capture "id" EmployeeId
-    --     :> Get '[JSON] Employee
-    -- -- POST /users/{id}
-    -- :<|> "users"
-    --     :> Capture "id" EmployeeId
-    --     :> ReqBody '[JSON] Employee
-    --     :> Post '[JSON] GenericResponse
-    -- -- PATCH /users/{id}
-    -- :<|> "users"
-    --     :> Capture "id" EmployeeId
-    --     :> ReqBody '[JSON] Employee
-    --     :> Patch '[JSON] GenericResponse
-    -- -- DELETE /users/{id}
-    -- :<|> "users"
-    --     :> Capture "id" EmployeeId
-    --     :> DeleteNoContent
     -- concur-replica UI
     :<|> Raw
 

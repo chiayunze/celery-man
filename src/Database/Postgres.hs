@@ -12,26 +12,31 @@ import           Data.ByteString.Char8            (pack)
 import           Data.Text                        (Text, append)
 import           Data.Text.Encoding               (decodeUtf8)
 import           Data.Vector                      (Vector, toList)
-import           Database.PostgreSQL.Simple       (SqlError, connectPostgreSQL,
+import           Database.PostgreSQL.Simple       (Connection, SqlError,
+                                                   connectPostgreSQL,
                                                    executeMany, execute_, query,
                                                    sqlErrorDetail, sqlErrorMsg,
                                                    withTransaction)
 import           Database.PostgreSQL.Simple.Types (Query (Query))
 import           System.Environment               (getEnv)
 
-getConnString :: IO String
-getConnString = do
+getConn :: IO Connection
+getConn = do
     user <- getEnv "PG_USER"
     password <- getEnv "PG_PASSWORD"
     host <- getEnv "PG_HOST"
     port <- getEnv "PG_PORT"
-    return $ "postgres://" ++ user ++ ":" ++ password ++ "@" ++ host ++ ":" ++ port
+    let connString = "postgres://" ++ user ++ ":" ++ password ++ "@" ++ host ++ ":" ++ port
+    connectPostgreSQL $ pack connString
 
 importEmployeesToDB :: Vector Employee -> IO (Either Text ())
 importEmployeesToDB employees = do
+    conn <- getConn
+    importEmployeesToDB' conn employees
 
-    connString <- fmap pack getConnString
-    conn <- connectPostgreSQL connString
+importEmployeesToDB' :: Connection -> Vector Employee -> IO (Either Text ())
+importEmployeesToDB' conn employees = do
+
     let execute_' = execute_ conn
         executeMany' = executeMany conn
         employees' = toList employees
@@ -54,9 +59,12 @@ importEmployeesToDB employees = do
 
 getUsersFromDB :: EmployeeSalary -> EmployeeSalary -> Int -> Int -> EmployeesTableField -> Bool -> IO (Either Text ([Employee], Int))
 getUsersFromDB minSalary maxSalary offset limit sortField sortAsc = do
+    conn <- getConn
+    getUsersFromDB' conn minSalary maxSalary offset limit sortField sortAsc
 
-    connString <- fmap pack getConnString
-    conn <- connectPostgreSQL connString
+getUsersFromDB' :: Connection -> EmployeeSalary -> EmployeeSalary -> Int -> Int -> EmployeesTableField -> Bool -> IO (Either Text ([Employee], Int))
+getUsersFromDB' conn minSalary maxSalary offset limit sortField sortAsc = do
+
     let sortAsc' = if sortAsc then "ASC" else "DESC"
         sortField' = case sortField of
             Id     -> "id"

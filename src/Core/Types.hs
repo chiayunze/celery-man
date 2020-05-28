@@ -17,7 +17,7 @@ data Employee = Employee {
   , login  :: EmployeeLogin
   , name   :: EmployeeName
   , salary :: EmployeeSalary
-} deriving (Generic, FromRow, ToRow)
+} deriving (Generic, FromRow, ToRow, Show, Eq)
 
 type EmployeeId = Text
 type EmployeeLogin = Text

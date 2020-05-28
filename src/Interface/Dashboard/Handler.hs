@@ -4,7 +4,7 @@ import Concur.Core                (Widget)
 import Concur.Replica             (HTML)
 import Control.Concurrent         (threadDelay)
 import Control.Monad.IO.Class     (liftIO)
-import Core.Service               (getUsers)
+import Core.Service               (getUsers')
 import Core.Types                 (EmployeesTableField (Id))
 import Data.Scientific            (fromFloatDigits)
 import Interface.Dashboard.Render (renderDashboard, renderEmployeeTable,
@@ -20,7 +20,7 @@ handlerDashboard = do
                 offset = (page - 1) * employeesPerPage
                 employeesPerPage = 10 -- modify this value to show more employees on a single page
 
-            eitherEmployees <- liftIO $ getUsers minSalary' maxSalary' offset employeesPerPage sortField sortAsc
+            eitherEmployees <- liftIO $ getUsers' minSalary' maxSalary' offset employeesPerPage sortField sortAsc
             case eitherEmployees of
                 Left err -> do
                     liftIO $ do

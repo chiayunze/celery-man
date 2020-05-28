@@ -14,8 +14,4 @@ app = serve api server
 server :: Server API
 server = uploadUsersHandler
     :<|> getUsersHandler
-    -- :<|> getUserHandler
-    -- :<|> createUserHandler
-    -- :<|> updateUserHandler
-    -- :<|> deleteUserHandler
     :<|> Tagged ui
