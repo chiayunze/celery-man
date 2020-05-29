@@ -1,0 +1,1 @@
+CREATE SCHEMA celery_man
