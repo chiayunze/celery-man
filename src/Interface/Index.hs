@@ -49,7 +49,9 @@ indexWithBootstrap =
                 ("crossorigin", AText "anonymous")
               ]) Nothing [],
             VNode "script" (fl [("language", AText "javascript")]) Nothing
-              [VRawText $ decodeUtf8 customJs]
+              [VRawText $ decodeUtf8 uploadJS],
+            VNode "script" (fl [("language", AText "javascript")]) Nothing
+              [VRawText $ decodeUtf8 streamingUploadJS]
           ]
       ]
   ]
@@ -63,8 +65,11 @@ customCss =
   where
     fl = fromList
 
-customJs :: ByteString
-customJs = $(embedFile "./js/upload.js")
+uploadJS :: ByteString
+uploadJS = $(embedFile "./js/upload.js")
+
+streamingUploadJS :: ByteString
+streamingUploadJS = $(embedFile "./js/streamingUpload.js")
 
 title :: Text
 title = "Celery Man"

@@ -9,8 +9,9 @@ import           Core.Types                       (Employee (Employee),
                                                    EmployeesTableField (Id, Login, Name, Salary))
 import qualified Data.ByteString                  as BS (append)
 import           Data.ByteString.Char8            (pack)
+import           Data.Int                         (Int64)
 import           Data.Text                        (Text, append)
-import           Data.Text.Encoding               (decodeUtf8)
+import           Data.Text.Encoding               (decodeUtf8, encodeUtf8)
 import           Data.Vector                      (Vector, toList)
 import           Database.PostgreSQL.Simple       (Connection, SqlError,
                                                    connectPostgreSQL,
@@ -28,6 +29,12 @@ getConn = do
     port <- getEnv "PG_PORT"
     let connString = "postgres://" ++ user ++ ":" ++ password ++ "@" ++ host ++ ":" ++ port
     connectPostgreSQL $ pack connString
+
+formatErrorString :: SqlError -> Text
+formatErrorString err = "DB error: "
+    `append` decodeUtf8 (sqlErrorMsg err)
+    `append` "\n"
+    `append` decodeUtf8 (sqlErrorDetail err)
 
 importEmployeesToDB :: Vector Employee -> IO (Either Text ())
 importEmployeesToDB employees = do
@@ -54,7 +61,7 @@ importEmployeesToDB' conn employees = do
         return ()
 
     case result :: Either SqlError () of
-        Left e  -> return $ Left $ "DB error: " `append` decodeUtf8 (sqlErrorMsg e) `append` "\n" `append` decodeUtf8 (sqlErrorDetail e)
+        Left e  -> return $ Left $ formatErrorString e
         Right _ -> return $ Right ()
 
 getUsersFromDB :: EmployeeSalary -> EmployeeSalary -> Int -> Int -> EmployeesTableField -> Bool -> IO (Either Text ([Employee], Int))
@@ -83,8 +90,52 @@ getUsersFromDB' conn minSalary maxSalary offset limit sortField sortAsc = do
     result <- try $ query conn queryTemplate substituteVars
 
     case result :: Either SqlError [(EmployeeId, EmployeeLogin, EmployeeName, EmployeeSalary, Int)] of
-        Left e -> return $ Left $ "DB error: " `append` decodeUtf8 (sqlErrorMsg e) `append` "\n" `append` decodeUtf8 (sqlErrorDetail e)
+        Left e -> return $ Left $ formatErrorString e
         Right rows -> return $ Right (
             map (\(id', login, name, salary, _) -> Employee id' login name salary) rows
           , if null rows then 0 else (\(_, _, _, _, records) -> records) $ head rows
           )
+
+createTempEmployeesTable :: Connection -> Text -> IO (Either Text ())
+createTempEmployeesTable conn tempName = do
+    let queryString = Query $ "CREATE TABLE celery_man.employees_temp_"
+            `BS.append` encodeUtf8 tempName
+            `BS.append` " (id VARCHAR(255) PRIMARY KEY, login VARCHAR(255) UNIQUE, name VARCHAR(255), salary NUMERIC(16, 2))"
+    result <- try $ execute_ conn queryString
+    case result :: Either SqlError Int64 of
+        Left e  -> return $ Left $ formatErrorString e
+        Right _ -> return $ Right ()
+
+insertIntoTempEmployeesTable :: Connection -> Text -> [Employee] -> IO (Either Text ())
+insertIntoTempEmployeesTable conn tempName employees = do
+    let queryTemplate = Query $ "INSERT INTO celery_man.employees_temp_"
+            `BS.append` encodeUtf8 tempName
+            `BS.append`"(id, login, name, salary) VALUES (?, ?, ?, ?)"
+    result <- try $ executeMany conn queryTemplate employees
+    case result :: Either SqlError Int64 of
+        Left e  -> return $ Left $ formatErrorString e
+        Right _ -> return $ Right ()
+
+deleteTempEmployeesTable :: Connection -> Text -> IO (Either Text ())
+deleteTempEmployeesTable conn tempName = do
+    let queryString = Query $ "DROP TABLE celery_man.employees_temp_"
+                `BS.append` encodeUtf8 tempName
+    result <- try $ execute_ conn queryString
+    case result :: Either SqlError Int64 of
+        Left e  -> return $ Left $ formatErrorString e
+        Right _ -> return $ Right ()
+
+transferTempToTarget :: Connection -> Text -> IO (Either Text ())
+transferTempToTarget conn tempName = do
+    let deleteQueryString = Query $ "DELETE FROM celery_man.employees \
+            \ WHERE id IN (SELECT id FROM celery_man.employees_temp_"
+            `BS.append` encodeUtf8 tempName `BS.append` ")"
+        insertQueryString = Query $ "INSERT INTO celery_man.employees SELECT * FROM celery_man.employees_temp_"
+            `BS.append` encodeUtf8 tempName
+    result <- try $ withTransaction conn $ do
+        _ <- execute_ conn deleteQueryString
+        _ <- execute_ conn insertQueryString
+        return ()
+    case result :: Either SqlError () of
+        Left e  -> return $ Left $ formatErrorString e
+        Right _ -> return $ Right ()

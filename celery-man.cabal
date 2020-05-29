@@ -12,6 +12,7 @@ executable celery-man
                      , API.Handlers
                      , API.Endpoints
                      , Database.Postgres
+                     , Beta.StreamingUpload
                      , Interface.UI
                      , Interface.Index
                      , Interface.Dashboard.Handler
@@ -39,6 +40,11 @@ executable celery-man
                      , websockets
                      , file-embed
                      , wai
+                     , http-types
+                     , wai-websockets
+                     , conduit
+                     , cassava-conduit
+                     , uuid
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall
