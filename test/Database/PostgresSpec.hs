@@ -4,20 +4,16 @@ module Database.PostgresSpec where
 
 import Core.Types                 (Employee (Employee),
                                    EmployeesTableField (Id, Login, Name, Salary))
-import Data.ByteString            (ByteString)
 import Data.Vector                (fromList)
-import Database.Postgres          (getUsersFromDB', importEmployeesToDB')
-import Database.PostgreSQL.Simple (Connection, close, connectPostgreSQL,
-                                   execute_, query_)
+import Database.Postgres          (getConn, getUsersFromDB',
+                                   importEmployeesToDB')
+import Database.PostgreSQL.Simple (Connection, close, execute_, query_)
 import Test.Hspec                 (Spec, afterAll, beforeAll, beforeWith,
                                    describe, it, shouldReturn)
 
-connString :: ByteString
-connString = "postgres://postgres:pw@localhost:5432" -- modify to connect to test db
-
 setupDB :: IO Connection
 setupDB = do
-    conn <- connectPostgreSQL connString
+    conn <- getConn
     _ <- execute_ conn "CREATE SCHEMA celery_man;\
         \ CREATE TABLE celery_man.employees (\
         \ id VARCHAR(255) PRIMARY KEY,\

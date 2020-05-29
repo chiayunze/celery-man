@@ -17,8 +17,7 @@ renderUploader field message = H.div [P.className "border border-primary", P.sty
 renderUploadField :: Widget HTML a
 renderUploadField = H.div []
     [ H.input [P.type_ "file", P.id "upload"]
-    , H.button [P.className "btn btn-outline-secondary", P.type_ "button", P.id "basicUpload"] [ H.text "Basic Upload"]
-    , H.button [P.className "btn btn-outline-secondary", P.type_ "button"] [ H.text "Large Upload"]
+    , H.button [P.className "btn btn-outline-secondary", P.type_ "button", P.id "basicUpload"] [ H.text "Upload"]
     ]
 
 renderUploadMessage :: Widget HTML a
