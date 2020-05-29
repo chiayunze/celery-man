@@ -73,7 +73,6 @@ renderEmployeeTable (minSalary, maxSalary, sortField, sortAsc, selectedPage) max
                 , H.td [] [H.text name]
                 , H.td [] [H.text login]
                 , H.td [] [H.text $ pack $ formatScientific Fixed (Just 2) salary]
-                , H.td [] [H.button [] [H.text "modify"], H.button [] [H.text "delete"]]
                 ]
             body = map renderRow employees
             header = H.tr []
@@ -81,5 +80,4 @@ renderEmployeeTable (minSalary, maxSalary, sortField, sortAsc, selectedPage) max
                 , H.th [] [H.text "Name"]
                 , H.th [] [H.text "Login"]
                 , H.th [] [H.text "Salary"]
-                , H.th [] [H.text "Action"]
                 ]
