@@ -23,6 +23,10 @@ type API =
         :> "upload"
         :> MultipartForm Tmp FilePath
         :> Post '[JSON] GenericResponse
+    -- GET /users/largeupload/streaming
+    :<|> "users"
+        :> "largeupload"
+        :> Raw
     -- GET /users
     :<|> "users"
         :> QueryParam' '[Required] "minSalary" Double

@@ -21,4 +21,8 @@ renderUploadField = H.div []
     ]
 
 renderUploadMessage :: Widget HTML a
-renderUploadMessage = H.text "Upload csv file to import into application"
+renderUploadMessage = H.div []
+    [ H.text "Upload csv file to import into application. For large files, use "
+    , H.a [P.href "/users/largeupload"] [H.text "this page"]
+    , H.text "."
+    ]

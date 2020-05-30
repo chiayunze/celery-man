@@ -1,19 +1,37 @@
 # Introduction
-Celery Man is an employee salary management web application for [the task](./resources/task.pdf) described in `./resources/task.pdf`. We implement user stories 1 & 2.
+Celery Man is an employee salary management web application for [this task](./resources/task.pdf). We implement user stories 1, 2, 4.
 
 ## Endpoints
 - `/` contains the web ui
 - `/users/upload` for importing users (user story 1)
 - `/users` for retrieving users (user story 2)
+- `/users/largeupload` for large file upload (user story 4)
+
+Websocket support is required for the application to work properly. For demo purposes we use the ws protocol instead of wss.
 
 ## User story 1: Upload
-- Upload button sends a post request to the backend.
-- Unpolished UI, obscure error messages, lack of logging - we deprioritize these issues for now, instead focusing on a working demo.
 - Atomicity - we utilize database transactions to commit our imports, if imports result in an invalid state then no changes are made. This also means that concurrent uploads are supported, the first file to be received will be imported and the subsequent file will overwrite the first file if there are any overlapping rows.
+- Unpolished UI, obscure error messages, lack of logging, unpooled db connections - we deprioritize these issues for now, instead focusing on a working demo.
 
 ## User Story 2: Dashboard
 - UI is server rendered, hence API is for automated testing purposes only. Both routes call the same core functions.
 - For the sort field, prefix, "+" is a reserved character that decodes to the space character " ". Instead, "%2B" decodes to "+" on the backend. However, we allow all mentioned examples in the query string.
+
+## User Story 4: Large File Upload
+This is an interesting task. Our goal will be to 1) have responsive user feedback, 2) ingest the file in constant memory. We do this using a streaming approach.
+1. Open a websocket connection from the client (user's browser) to the server.
+2. Send the file over the websocket connection in chunks. For now we have set it to be 1MB chunks. By rendering on the UI the number of bytes we have sent across, the user can get an idea of how long the upload will take. We can also make it such that the server sends a "number of bytes received" message and render this in real time due to our duplex websocket connection.
+3. On the server end, we receive the chunks and start our ingestion in a streaming fashion. We decode and parse the bytes into records as we receive it.
+4. As each record is being built from bytes, we also validate them (i.e. salary cannot be negative).
+5. Every n records, we flush our memory into the database by performing an insert into a temporary table. For now we have set n to be 500. Constraints set up in the database will inform us whether that set of records is valid (i.e. non-unique ids or logins).
+6. Once all the data has been streamed and inserted into the temp table, we copy the temp table into the main table in a single transaction. At this point we can know whether the new records will clash with the existing records, if it does, the copy is aborted.
+7. At any point in step 3, 4, 5, 6, if an error occurs we send an appropriate error message to the client and abort the entire process, including cleaning up of resources like deleting the temp table and closing the websocket connection.
+
+The streaming approach allows us to keep the process within constant memory. We can tune the chunk size (step 2) or the record cache (step 5) to meet our requirements. Streaming also allows us to handle any errors and halt the import process once it is found, instead of waiting for the entire file to be uploaded. The user can be informed promptly when this happens, saving time.
+
+An additional benefit of our streaming approach is that we can eventually build in a feature for resuming of partial uploads (for instance, if the user disconnects halfway).
+
+Since we utilize the atomic semantics of database transactions here as well, we get free concurrency built in. By using unique temp tables, multiple users can upload at once. We handle concurrency on the server end with green threads (that can be multiplexed to multiple OS threads if scaling up is required, thanks to GHC). The only limitation will be the database instance.
 
 # Quickstart with docker
 ```
@@ -32,7 +50,6 @@ Or just run the sql queries in `./migrations/scripts`.
 # Repository structure
 ```
 .
-├── js                  -- javascript for UI
 ├── migrations          -- additional tools for managing db resources
 │   └── scripts         -- sql for creating db resources
 ├── resources           -- non-code resources
@@ -41,6 +58,7 @@ Or just run the sql queries in `./migrations/scripts`.
 │   ├── Core            -- base types, validation, core logic
 │   ├── Database        -- interfacing with postgres
 │   └── Interface       -- for rendering the UI
+├── static              -- html and js for ui
 └── test                -- for testing,  mirrors src/
 ```
 
