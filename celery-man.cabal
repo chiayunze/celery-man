@@ -8,6 +8,7 @@ executable celery-man
   main-is:             Main.hs
   other-modules:       Core.Types
                      , Core.Service
+                     , Core.StreamingUpload
                      , API.Server
                      , API.Handlers
                      , API.Endpoints
@@ -39,6 +40,12 @@ executable celery-man
                      , websockets
                      , file-embed
                      , wai
+                     , http-types
+                     , wai-websockets
+                     , conduit
+                     , cassava-conduit
+                     , uuid
+                     , transformers
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall

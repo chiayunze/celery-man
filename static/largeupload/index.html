@@ -1,0 +1,50 @@
+<!doctype html><html>
+    <head>
+        <meta charset="utf-8" content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
+        <title>Celery Man</title>
+        <style type="text/css">.window {margin-right: auto; margin-left: auto; max-width: 960px;}</style>
+    </head>
+    <body>
+        <div>
+            <strong>Import CSV</strong>
+            <div>
+                <input type="file" id="upload">
+                <button id="streamingUpload">Upload</button>
+            </div>
+            <small id="mess"></small>
+        </div>
+    </body>
+    <script language="javascript">
+        const renderBytes = (bytes) => {
+            if (bytes < 1024 * 1024) {
+                const kb = bytes / 1024
+                return `${kb.toFixed(2)} KB`
+            } else {
+                const mb = bytes / 1024 / 1024
+                return `${mb.toFixed(2)} MB`
+            }
+        }
+        document.getElementById('streamingUpload').onclick = () => {
+            const fileInput = document.getElementById('upload')
+            file = fileInput.files[0]
+            if (file && file.size > 0) {
+                const port = window.location.port ? window.location.port : (window.location.protocol === 'http:' ? 80 : 443)
+                const host = window.location.hostname
+                const ws = new WebSocket(`ws://${host}:${port}/beta/users/upload`)
+                ws.onmessage = (message) => {
+                    document.getElementById("mess").innerHTML = message.data
+                    ws.close()
+                }
+                ws.onopen = () => {
+                    const CHUNK_SIZE = 1024 * 1024 // chunks of 1MB
+                    for (let i = 0; i < file.size; i += CHUNK_SIZE) {
+                        ws.send(file.slice(i, i + CHUNK_SIZE))
+                        const uploadedBytesPercentage = Math.min(i + CHUNK_SIZE, file.size) / file.size
+                        document.getElementById("mess").innerHTML = `Uploading ${renderBytes(file.size)}... ${uploadedBytesPercentage.toFixed(2)}%`
+                    }
+                    ws.send("COMPLETE")
+                }
+            }
+        }
+    </script>
+</html>

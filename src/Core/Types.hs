@@ -30,6 +30,6 @@ instance ToJSON Employee
 instance FromRecord Employee where
     parseRecord v
         | length v == 4 = Employee <$> v .! 0 <*> v .! 1 <*> v .! 2 <*> v .! 3
-        | otherwise     = fail "preceeding row does not have 4 columns"
+        | otherwise     = fail $ "error when parsing near " ++ show v
 
 data EmployeesTableField = Id | Name | Login | Salary deriving (Show, Read)

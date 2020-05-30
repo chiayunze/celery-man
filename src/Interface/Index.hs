@@ -49,7 +49,7 @@ indexWithBootstrap =
                 ("crossorigin", AText "anonymous")
               ]) Nothing [],
             VNode "script" (fl [("language", AText "javascript")]) Nothing
-              [VRawText $ decodeUtf8 customJs]
+              [VRawText $ decodeUtf8 uploadJS]
           ]
       ]
   ]
@@ -63,8 +63,8 @@ customCss =
   where
     fl = fromList
 
-customJs :: ByteString
-customJs = $(embedFile "./js/upload.js")
+uploadJS :: ByteString
+uploadJS = $(embedFile "./static/upload.js")
 
 title :: Text
 title = "Celery Man"

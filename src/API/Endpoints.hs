@@ -23,6 +23,10 @@ type API =
         :> "upload"
         :> MultipartForm Tmp FilePath
         :> Post '[JSON] GenericResponse
+    -- GET /users/largeupload/streaming
+    :<|> "users"
+        :> "largeupload"
+        :> Raw
     -- GET /users
     :<|> "users"
         :> QueryParam' '[Required] "minSalary" Double
@@ -31,6 +35,11 @@ type API =
         :> QueryParam' '[Required] "limit" Int
         :> QueryParam' '[Required] "sort" Text
         :> Get '[JSON] GetUsersResponse
+    -- ws /beta/users/upload large file upload endpoint
+    :<|> "beta"
+        :> "users"
+        :> "upload"
+        :> Raw
     -- concur-replica UI
     :<|> Raw
 

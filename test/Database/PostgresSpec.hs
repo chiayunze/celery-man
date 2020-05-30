@@ -2,14 +2,19 @@
 
 module Database.PostgresSpec where
 
+import Control.Exception.Safe     (try)
 import Core.Types                 (Employee (Employee),
                                    EmployeesTableField (Id, Login, Name, Salary))
 import Data.Vector                (fromList)
-import Database.Postgres          (getConn, getUsersFromDB',
-                                   importEmployeesToDB')
-import Database.PostgreSQL.Simple (Connection, close, execute_, query_)
-import Test.Hspec                 (Spec, afterAll, beforeAll, beforeWith,
-                                   describe, it, shouldReturn)
+import Database.Postgres          (createTempEmployeesTable,
+                                   deleteTempEmployeesTable, getConn,
+                                   getUsersFromDB', importEmployeesToDB',
+                                   insertIntoTempEmployeesTable,
+                                   transferTempToTarget)
+import Database.PostgreSQL.Simple (Connection, SqlError, close, execute_,
+                                   query_, sqlErrorMsg)
+import Test.Hspec                 (Spec, after, before, describe, it, shouldBe,
+                                   shouldReturn)
 
 setupDB :: IO Connection
 setupDB = do
@@ -24,19 +29,12 @@ setupDB = do
 
 teardownDB :: Connection -> IO ()
 teardownDB conn = do
-    _ <- execute_ conn "DROP TABLE celery_man.employees;\
-        \DROP SCHEMA celery_man;"
+    _ <- execute_ conn "DROP SCHEMA celery_man CASCADE;"
     close conn
 
-flushDB :: Connection -> IO Connection
-flushDB conn = do
-    _ <- execute_ conn "DELETE FROM celery_man.employees"
-    return conn
-
 spec :: Spec
-spec = beforeAll setupDB $ -- before first spec items
-        afterAll teardownDB $ -- after last spec item
-        beforeWith flushDB $ do -- before every spec item
+spec = before setupDB $
+        after teardownDB $ do
 
             describe "getUsersFromDB" $  do
 
@@ -124,3 +122,41 @@ spec = beforeAll setupDB $ -- before first spec items
 
                 it "should return [] when nothing in table" $ \conn ->
                     getUsersFromDB' conn 0 200 0 30 Id True `shouldReturn` Right ([], 0)
+
+            describe "createTempEmployeesTable" $
+                it "should create a table" $ \conn -> do
+                    _<- createTempEmployeesTable conn "uuid"
+                    query_ conn "SELECT * FROM celery_man.employees_temp_uuid" `shouldReturn` ([] :: [Employee])
+
+            describe "insertIntoTempEmployeesTable" $
+                it "should insert records" $ \conn -> do
+                    let employees = [
+                            Employee "id" "login" "name" 100
+                          , Employee "id2" "login2" "name" 100
+                          ]
+                    _ <- execute_ conn "CREATE TABLE celery_man.employees_temp_uuid \
+                        \(id VARCHAR(255) PRIMARY KEY, login VARCHAR(255) UNIQUE, name VARCHAR(255), salary NUMERIC(16, 2))"
+                    _ <- insertIntoTempEmployeesTable conn "uuid" employees
+                    query_ conn "SELECT * FROM celery_man.employees_temp_uuid" `shouldReturn` employees
+
+            describe "deleteTempEmployeesTable" $
+                it "should delete the table" $ \conn -> do
+                    _ <- execute_ conn "CREATE TABLE celery_man.employees_temp_uuid \
+                        \(id VARCHAR(255) PRIMARY KEY, login VARCHAR(255) UNIQUE, name VARCHAR(255), salary NUMERIC(16, 2))"
+                    _ <- deleteTempEmployeesTable conn "uuid"
+                    result <- try $ query_ conn "SELECT * FROM celery_man.employees_temp_uuid"
+                    either sqlErrorMsg (const "") (result :: Either SqlError [Employee]) `shouldBe`
+                        "relation \"celery_man.employees_temp_uuid\" does not exist"
+
+            describe "transferTempToTarget" $
+                it "should copy records" $ \conn -> do
+                    let employees = [
+                            Employee "id" "login" "name" 100
+                          , Employee "id2" "login2" "name" 100
+                          ]
+                    _ <- execute_ conn "CREATE TABLE celery_man.employees_temp_uuid \
+                        \(id VARCHAR(255) PRIMARY KEY, login VARCHAR(255) UNIQUE, name VARCHAR(255), salary NUMERIC(16, 2))"
+                    _ <- execute_ conn "INSERT INTO celery_man.employees_temp_uuid (id, login, name, salary)\
+                            \ VALUES ('id', 'login', 'name', 100), ('id2', 'login2', 'name', 100)"
+                    _ <- transferTempToTarget conn "uuid"
+                    query_ conn "SELECT * FROM celery_man.employees_temp_uuid" `shouldReturn` employees
