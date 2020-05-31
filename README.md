@@ -71,7 +71,7 @@ cabal v2-test
 ```
 The application is exposed on port 8081 by default.
 
-# Contributing
+# Setting up the dev environment
 We use cabal as the build tool. Make sure it is version >=3.0
 ```
 cabal --version

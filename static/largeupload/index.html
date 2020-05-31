@@ -39,7 +39,7 @@
                     const CHUNK_SIZE = 1024 * 1024 // chunks of 1MB
                     for (let i = 0; i < file.size; i += CHUNK_SIZE) {
                         ws.send(file.slice(i, i + CHUNK_SIZE))
-                        const uploadedBytesPercentage = Math.min(i + CHUNK_SIZE, file.size) / file.size
+                        const uploadedBytesPercentage = Math.min(i + CHUNK_SIZE, file.size) / file.size * 100
                         document.getElementById("mess").innerHTML = `Uploading ${renderBytes(file.size)}... ${uploadedBytesPercentage.toFixed(2)}%`
                     }
                     ws.send("COMPLETE")
